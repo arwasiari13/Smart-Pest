@@ -1,0 +1,221 @@
+// Users (Admin & Farmer) are managed in Firebase Auth + Firestore.
+// This schema contains only the operational IoT data.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RobotStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  OFFLINE
+}
+
+enum CameraStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AlertStatus {
+  PENDING
+  SENT
+  READ
+  RESOLVED
+}
+
+enum StorageProvider {
+  LOCAL
+  FIREBASE
+  S3
+}
+
+// ownerUid = Firebase UID of the farmer who owns this territory
+model Territoire {
+  id          String   @id @default(uuid())
+  ownerUid    String
+  name        String
+  areaHectare Decimal  @db.Decimal(10, 2)
+  centerLat   Decimal  @db.Decimal(10, 7)
+  centerLng   Decimal  @db.Decimal(10, 7)
+  boundaryGeo Json?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  robots  Robot[]
+  trajets Trajet[]
+  alerts  Alerte[]
+
+  @@index([ownerUid])
+  @@index([isActive])
+}
+
+model Robot {
+  id              String      @id @default(uuid())
+  territoireId    String?
+  serialNumber    String      @unique
+  name            String
+  status          RobotStatus @default(INACTIVE)
+  batteryLevel    Int         @default(100)
+  firmwareVersion String?
+  currentLat      Decimal?    @db.Decimal(10, 7)
+  currentLng      Decimal?    @db.Decimal(10, 7)
+  lastSeenAt      DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  territoire Territoire?     @relation(fields: [territoireId], references: [id], onDelete: SetNull)
+  cameras    Camera[]
+  trajets    Trajet[]
+  images     ImageCapturee[]
+  alerts     Alerte[]
+
+  @@index([territoireId])
+  @@index([status])
+  @@index([lastSeenAt])
+}
+
+model Camera {
+  id         String       @id @default(uuid())
+  robotId    String
+  name       String
+  resolution String?
+  status     CameraStatus @default(ACTIVE)
+  mountedAt  DateTime     @default(now())
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  robot  Robot           @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  images ImageCapturee[]
+
+  @@index([robotId])
+  @@index([status])
+}
+
+model ModeleIA {
+  id               String    @id @default(uuid())
+  name             String
+  version          String
+  harmfulClassName String    @default("harmful_snail")
+  confidenceMin    Decimal   @default(0.80) @db.Decimal(4, 3)
+  isActive         Boolean   @default(true)
+  deployedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  images ImageCapturee[]
+  alerts Alerte[]
+
+  @@unique([name, version])
+  @@index([isActive])
+}
+
+model Trajet {
+  id           String    @id @default(uuid())
+  territoireId String
+  robotId      String
+  name         String
+  pathGeo      Json
+  isActive     Boolean   @default(true)
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  territoire Territoire @relation(fields: [territoireId], references: [id], onDelete: Cascade)
+  robot      Robot      @relation(fields: [robotId], references: [id], onDelete: Cascade)
+
+  @@index([territoireId])
+  @@index([robotId])
+  @@index([isActive])
+}
+
+model ImageCapturee {
+  id            String   @id @default(uuid())
+  robotId       String
+  cameraId      String
+  modeleIAId    String?
+  imageUrl      String
+  imagePath     String?
+  capturedAt    DateTime @default(now())
+  gpsLat        Decimal  @db.Decimal(10, 7)
+  gpsLng        Decimal  @db.Decimal(10, 7)
+  detectedClass String?
+  confidence    Decimal? @db.Decimal(5, 4)
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  robot    Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  camera   Camera    @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+  modeleIA ModeleIA? @relation(fields: [modeleIAId], references: [id], onDelete: SetNull)
+  alert    Alerte?
+
+  @@index([robotId])
+  @@index([cameraId])
+  @@index([modeleIAId])
+  @@index([capturedAt])
+  @@index([gpsLat, gpsLng])
+}
+
+// ownerUid = Firebase UID of the farmer who owns the alert
+model Alerte {
+  id           String        @id @default(uuid())
+  ownerUid     String
+  territoireId String
+  robotId      String
+  imageId      String        @unique
+  modeleIAId   String?
+  severity     AlertSeverity
+  status       AlertStatus   @default(PENDING)
+  title        String
+  message      String
+  gpsLat       Decimal       @db.Decimal(10, 7)
+  gpsLng       Decimal       @db.Decimal(10, 7)
+  confidence   Decimal       @db.Decimal(5, 4)
+  detectedAt   DateTime      @default(now())
+  sentAt       DateTime?
+  readAt       DateTime?
+  resolvedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  territoire Territoire    @relation(fields: [territoireId], references: [id], onDelete: Cascade)
+  robot      Robot         @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  image      ImageCapturee @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  modeleIA   ModeleIA?     @relation(fields: [modeleIAId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUid, status])
+  @@index([territoireId])
+  @@index([robotId])
+  @@index([severity])
+  @@index([detectedAt])
+}
+
+model ServeurCloud {
+  id          String          @id @default(uuid())
+  name        String
+  provider    StorageProvider
+  endpointUrl String?
+  bucketName  String?
+  region      String?
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([provider])
+  @@index([isActive])
+}

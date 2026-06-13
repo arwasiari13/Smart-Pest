@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "448702671945",
+    "project_id": "smartpest-52d02",
+    "storage_bucket": "smartpest-52d02.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:448702671945:android:2e7d13a30db8a0a89f6398",
+        "android_client_info": {
+          "package_name": "com.smartpest.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgHCb8I1meWVYluiZ74puYyuIWoj9mbQw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
