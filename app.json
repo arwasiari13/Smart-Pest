@@ -5,9 +5,15 @@
     "scheme": "smartpest",
     "version": "1.0.0",
     "sdkVersion": "54.0.0",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "orientation": "portrait",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "plugins": [
       [
         "expo-notifications",
@@ -41,7 +47,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "99bac276-6dda-4ad5-8d62-2b05b1aeed77"
       }
     }
   }

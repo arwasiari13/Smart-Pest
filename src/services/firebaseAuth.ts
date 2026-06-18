@@ -6,8 +6,8 @@ import {
   User,
   getIdTokenResult,
 } from 'firebase/auth';
-import { auth } from '../config/firebase';
-import { apiRequest } from './api';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 
 export type AppUser = {
   uid: string;
@@ -47,17 +47,15 @@ export async function registerFarmer(input: {
   const credential = await createUserWithEmailAndPassword(auth, email, password);
 
   try {
-    const idToken = await credential.user.getIdToken();
-
-    // Step 2: Create the Firestore profile on the backend
-    await apiRequest('/auth/register/farmer', {
-      method: 'POST',
-      token: idToken,
-      body: JSON.stringify(profile),
+    // Write the farmer profile directly to Firestore
+    await setDoc(doc(db, 'farmers', credential.user.uid), {
+      uid: credential.user.uid,
+      email: credential.user.email,
+      role: 'FARMER',
+      status: 'PENDING',
+      ...profile,
+      createdAt: serverTimestamp(),
     });
-
-    // Step 3: Force-refresh the token so custom claims are included
-    await credential.user.getIdToken(true);
 
     return {
       uid: credential.user.uid,
@@ -66,7 +64,7 @@ export async function registerFarmer(input: {
       status: 'PENDING',
     };
   } catch (err) {
-    // Backend failed — delete the Firebase account so the user can retry cleanly
+    // Firestore write failed — delete the Firebase account so the user can retry cleanly
     await credential.user.delete();
     throw err;
   }

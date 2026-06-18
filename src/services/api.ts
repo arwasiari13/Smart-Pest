@@ -1,6 +1,8 @@
 import { auth } from '../config/firebase';
 
-export const API_BASE_URL = 'http://localhost:4000/api/v1';
+const defaultApiBaseUrl = 'http://localhost:4000/api/v1';
+
+export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL ?? defaultApiBaseUrl).replace(/\/$/, '');
 
 // Returns the current user's Firebase ID token, or null if not signed in.
 async function currentIdToken(): Promise<string | null> {

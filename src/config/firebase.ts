@@ -1,7 +1,7 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
-import { getMessaging, isSupported, Messaging } from 'firebase/messaging';
+import type { Messaging } from 'firebase/messaging';
 
 // ─── Fill these from Firebase Console → Project Settings → General ─────────────
 // Or expose them via app.json extra / EAS secrets (never commit real keys)
@@ -25,10 +25,12 @@ export const firebaseApp = app;
 export const auth: Auth = getAuth(app);
 export const db: Firestore = getFirestore(app);
 
-// Messaging is only available in native builds with @react-native-firebase/messaging
-// For web/Expo Go we fall back gracefully
+// Messaging is only available in browser-like runtimes.
 export async function getFirebaseMessaging(): Promise<Messaging | null> {
   try {
+    if (typeof window === 'undefined') return null;
+
+    const { getMessaging, isSupported } = await import('firebase/messaging');
     const supported = await isSupported();
     if (!supported) return null;
     return getMessaging(app);
