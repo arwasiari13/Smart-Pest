@@ -4,8 +4,6 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
-import { apiRequest } from './api';
-
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -55,39 +53,7 @@ async function registerForPushNotificationsAsync() {
 }
 
 async function getFcmToken(): Promise<string | null> {
-  try {
-    // Dynamically import Firebase messaging — only available on native builds
-    // with @react-native-firebase/messaging installed
-    const messaging = (await import('@react-native-firebase/messaging')).default;
-
-    const authStatus = await messaging().requestPermission();
-    const enabled =
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-    if (!enabled) return null;
-    return await messaging().getToken();
-  } catch {
-    // Firebase messaging not installed or not supported (e.g. Expo Go)
-    return null;
-  }
-}
-
-async function registerTokenWithBackend(
-  authToken: string,
-  token: string,
-  tokenType: 'EXPO' | 'FCM',
-) {
-  await apiRequest('/notifications/device-tokens', {
-    method: 'POST',
-    token: authToken,
-    body: JSON.stringify({
-      token,
-      tokenType,
-      platform: Platform.OS,
-      deviceId: Constants.sessionId,
-    }),
-  });
+  return null;
 }
 
 export function useSmartPestNotifications(authToken?: string, onAlertDeepLink?: (alertId: string) => void) {
@@ -105,17 +71,9 @@ export function useSmartPestNotifications(authToken?: string, onAlertDeepLink?: 
         if (!mounted) return;
         setState((prev) => ({ ...prev, expoPushToken }));
 
-        if (authToken) {
-          await registerTokenWithBackend(authToken, expoPushToken, 'EXPO');
-        }
-
-        // Register FCM token if Firebase messaging is available
         const fcmToken = await getFcmToken();
         if (fcmToken && mounted) {
           setState((prev) => ({ ...prev, fcmToken }));
-          if (authToken) {
-            await registerTokenWithBackend(authToken, fcmToken, 'FCM');
-          }
         }
       } catch (error) {
         if (mounted) setState({ error: error instanceof Error ? error.message : 'Registration failed' });

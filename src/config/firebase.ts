@@ -22,6 +22,7 @@ if (getApps().length === 0) {
 }
 
 export const firebaseApp = app;
+
 export const auth: Auth = getAuth(app);
 export const db: Firestore = getFirestore(app);
 

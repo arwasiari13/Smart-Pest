@@ -6,7 +6,9 @@ import {
   User,
   getIdTokenResult,
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { auth, db } from '../config/firebase';
 
 export type AppUser = {
@@ -17,10 +19,32 @@ export type AppUser = {
   displayName?: string;
 };
 
+// ─── Save push token to Firestore ─────────────────────────
+
+async function savePushToken(uid: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    let finalStatus = status;
+    if (status !== 'granted') {
+      const { status: newStatus } = await Notifications.requestPermissionsAsync();
+      finalStatus = newStatus;
+    }
+    if (finalStatus !== 'granted') return;
+
+    const token = await Notifications.getExpoPushTokenAsync();
+    await updateDoc(doc(db, 'users', uid), {
+      expoPushToken: token.data,
+      updatedAt: serverTimestamp(),
+    });
+  } catch {}
+}
+
 // ─── Sign in ──────────────────────────────────────────────
 
 export async function signIn(email: string, password: string): Promise<AppUser> {
   const credential = await signInWithEmailAndPassword(auth, email, password);
+  savePushToken(credential.user.uid);
   return getUserProfile(credential.user);
 }
 
@@ -47,14 +71,15 @@ export async function registerFarmer(input: {
   const credential = await createUserWithEmailAndPassword(auth, email, password);
 
   try {
-    // Write the farmer profile directly to Firestore
-    await setDoc(doc(db, 'farmers', credential.user.uid), {
+    // Write the farmer profile to the users collection
+    await setDoc(doc(db, 'users', credential.user.uid), {
       uid: credential.user.uid,
       email: credential.user.email,
       role: 'FARMER',
       status: 'PENDING',
       ...profile,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
 
     return {

@@ -180,7 +180,7 @@ export default function FarmerRegistration({ onNavigate, onRegister }: FarmerReg
       } else if (msg.includes('invalid-email')) {
         setError('Invalid email address.');
       } else {
-        setError('Registration failed. Please check your connection and try again.');
+        setError(`Error: ${msg}`);
       }
     } finally {
       setLoading(false);
