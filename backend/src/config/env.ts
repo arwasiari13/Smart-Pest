@@ -14,9 +14,10 @@ const envSchema = z.object({
   SMS_PROVIDER: z.string().default('disabled'),
 
   // Firebase Admin SDK credentials (from Firebase Console → Project Settings → Service Accounts)
-  FIREBASE_PROJECT_ID: z.string().min(1),
-  FIREBASE_CLIENT_EMAIL: z.string().email(),
-  FIREBASE_PRIVATE_KEY: z.string().min(1),
+  // Leave empty to start the server without Firebase (push notifications disabled)
+  FIREBASE_PROJECT_ID: z.string().default(''),
+  FIREBASE_CLIENT_EMAIL: z.string().default(''),
+  FIREBASE_PRIVATE_KEY: z.string().default(''),
 
   // Frontend Firebase Web SDK credentials (same project, different SDK)
   FIREBASE_API_KEY: z.string().optional(),

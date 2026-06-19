@@ -14,7 +14,9 @@ import { Feather } from '@expo/vector-icons';
 import { DemoRoute } from './DemoNavigator';
 import { AdminFarmer } from './AdminDashboard';
 import { registerPushToken, listenForNotifications, IncomingNotification } from '../services/pushNotifications';
+import { connectSocket, disconnectSocket } from '../services/socketClient';
 import { apiRequest } from '../services/api';
+import { auth } from '../config/firebase';
 
 type FeatherIconName = ComponentProps<typeof Feather>['name'];
 type Severity = 'HIGH' | 'MEDIUM' | 'LOW';
@@ -38,6 +40,7 @@ type StatCardProps = {
 
 type FarmerDashboardProps = {
   farmer: AdminFarmer;
+  userId?: string;
   onNavigate: (path: DemoRoute) => void;
 };
 
@@ -227,7 +230,7 @@ function NotificationBanner({ notif, onDismiss }: { notif: IncomingNotification;
   );
 }
 
-export default function FarmerDashboard({ farmer, onNavigate }: FarmerDashboardProps) {
+export default function FarmerDashboard({ farmer, userId, onNavigate }: FarmerDashboardProps) {
   const { width } = useWindowDimensions();
   const compactStats = width < 520;
   const [alerts, setAlerts] = useState<FarmerAlert[]>([]);
@@ -245,13 +248,41 @@ export default function FarmerDashboard({ farmer, onNavigate }: FarmerDashboardP
     // Listen for incoming push notifications while app is open
     const unsub = listenForNotifications((notif) => {
       setLiveNotif(notif);
-      // Refresh alert list when new detection arrives
       apiRequest<{ alerts: FarmerAlert[] }>('/alerts')
         .then((res) => setAlerts(res.alerts ?? []))
         .catch(() => {});
     });
 
-    return unsub;
+    // Real-time Socket.IO connection — receive alert:new instantly when app is open
+    const resolvedUserId = userId ?? auth.currentUser?.uid;
+    if (resolvedUserId) {
+      const socket = connectSocket(resolvedUserId);
+      socket.on('alert:new', (raw: {
+        id: string;
+        title: string;
+        message: string;
+        severity: string;
+        gpsLat: number | string;
+        gpsLng: number | string;
+        detectedAt: string;
+      }) => {
+        const incoming: FarmerAlert = {
+          id: raw.id,
+          title: raw.title,
+          severity: raw.severity as Severity,
+          gpsLat: Number(raw.gpsLat),
+          gpsLng: Number(raw.gpsLng),
+          createdAt: raw.detectedAt,
+        };
+        setAlerts((prev) => [incoming, ...prev]);
+        setLiveNotif({ title: raw.title, body: raw.message });
+      });
+    }
+
+    return () => {
+      unsub();
+      disconnectSocket();
+    };
   }, []);
 
   return (
