@@ -114,7 +114,7 @@ export async function processImageFromIot(
     data: { alertId: alert.id, screen: 'AlertDetails', severity: alert.severity },
   });
 
-  await sendPushNotification(notification.id);
+  if (notification) await sendPushNotification(notification.id);
   await prisma.alerte.update({ where: { id: alert.id }, data: { status: AlertStatus.SENT, sentAt: new Date() } });
 
   emitToUser(ownerUid, 'alert:new', alert);

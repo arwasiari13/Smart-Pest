@@ -29,20 +29,36 @@ export async function createNotification(input: {
   body: string;
   data?: Record<string, unknown>;
   deepLink?: string;
-}): Promise<firestoreService.NotificationDoc> {
-  const notification = await firestoreService.createNotificationDoc({
-    userId: input.userId,
-    alertId: input.alertId,
-    type: input.type,
-    status: 'PENDING',
-    title: input.title,
-    body: input.body,
-    data: input.data,
-    deepLink: input.deepLink,
-  });
-
-  emitToUser(input.userId, 'notification:new', notification);
-  return notification;
+}): Promise<firestoreService.NotificationDoc | null> {
+  try {
+    const notification = await firestoreService.createNotificationDoc({
+      userId: input.userId,
+      alertId: input.alertId,
+      type: input.type,
+      status: 'PENDING',
+      title: input.title,
+      body: input.body,
+      data: input.data,
+      deepLink: input.deepLink,
+    });
+    emitToUser(input.userId, 'notification:new', notification);
+    return notification;
+  } catch {
+    // Firestore not configured — emit real-time event only (no push notification)
+    console.warn('[Notification] Firestore unavailable — Socket.IO only for userId:', input.userId);
+    emitToUser(input.userId, 'notification:new', {
+      id: `local-${Date.now()}`,
+      userId: input.userId,
+      alertId: input.alertId,
+      type: input.type,
+      status: 'SENT' as const,
+      title: input.title,
+      body: input.body,
+      data: input.data,
+      deepLink: input.deepLink,
+    });
+    return null;
+  }
 }
 
 export async function sendPushNotification(notificationId: string) {

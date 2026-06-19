@@ -10,8 +10,9 @@ import { PrismaClient, RobotStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Replace with a real Firebase UID after creating the farmer account
-const FARMER_UID = 'REPLACE_WITH_FIREBASE_FARMER_UID';
+// For local testing without Firebase, use this placeholder UID.
+// After creating a real Firebase farmer account, replace with the actual Firebase UID.
+const FARMER_UID = process.env.FARMER_UID ?? 'demo-farmer-uid-001';
 
 async function main() {
   console.log('Seeding operational IoT data...');

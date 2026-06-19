@@ -8,7 +8,15 @@ export const createDetection = asyncHandler(async (req: Request, res: Response) 
 });
 
 export const listAlerts = asyncHandler(async (req: Request, res: Response) => {
-  res.json(await alertService.listAlerts(req.user!));
+  const raw = await alertService.listAlerts(req.user!);
+  const alerts = raw.map((a) => ({
+    ...a,
+    createdAt: a.detectedAt,
+    gpsLat: Number(a.gpsLat),
+    gpsLng: Number(a.gpsLng),
+    confidence: Number(a.confidence),
+  }));
+  res.json({ alerts });
 });
 
 export const markRead = asyncHandler(async (req: Request, res: Response) => {
